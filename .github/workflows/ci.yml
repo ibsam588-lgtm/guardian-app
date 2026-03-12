@@ -26,13 +26,12 @@ jobs:
           mkdir -p lib/config
           cp lib/config/secrets.example.dart lib/config/secrets.dart
 
-      - name: Create dummy google-services.json
+      - name: Create google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          echo '{
-            "project_info": {"project_number":"000","project_id":"guardian-ci","storage_bucket":"guardian-ci.appspot.com"},
-            "client": [{"client_info":{"mobilesdk_app_id":"1:000:android:000","android_client_info":{"package_name":"com.guardian.app"}},"api_key":[{"current_key":"DUMMY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
-            "configuration_version": "1"
-          }' > android/app/google-services.json
+          mkdir -p android/app
+          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Get dependencies
         run: flutter pub get
@@ -71,7 +70,9 @@ jobs:
       - name: Create google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+        run: |
+          mkdir -p android/app
+          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Setup keystore
         env:
@@ -147,4 +148,4 @@ jobs:
       - name: Deploy functions
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: firebase deploy --only functions --token "$FIREBASE_TOKEN" --project guardian-app
+        run: firebase deploy --only functions --token "$FIREBASE_TOKEN" --project guardian-e28d4
