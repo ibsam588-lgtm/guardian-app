@@ -61,7 +61,7 @@ class SubscriptionService {
       expiryDate: trialEnds,
       isTrial: isInTrial,
       daysRemainingInTrial: isInTrial
-          ? (trialEnds?.difference(DateTime.now()).inDays ?? 0)
+          ? trialEnds!.difference(DateTime.now()).inDays
           : 0,
     );
   }
