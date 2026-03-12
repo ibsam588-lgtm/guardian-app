@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/auth_widgets.dart';
 import '../../widgets/guardian_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -93,13 +94,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 32),
 
                 // Google SSO
-                _GoogleSignInButton(
+                GoogleSignInButton(
                   loading: _googleLoading,
                   onTap: _googleSignIn,
                 ),
 
                 const SizedBox(height: 20),
-                _Divider(),
+                AuthDivider(),
                 const SizedBox(height: 20),
 
                 // Email field
@@ -162,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Error
                 if (_error != null) ...[
                   const SizedBox(height: 8),
-                  _ErrorBanner(message: _error!),
+                  ErrorBanner(message: _error!),
                 ],
 
                 const SizedBox(height: 24),
@@ -263,126 +264,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _GoogleSignInButton extends StatelessWidget {
-  final bool loading;
-  final VoidCallback onTap;
-
-  const _GoogleSignInButton({required this.loading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: loading ? null : onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: loading
-            ? const Center(
-                child: SizedBox(
-                  height: 22, width: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Google G icon (inline SVG-like using colored text)
-                  Container(
-                    width: 22, height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'G',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF4285F4),
-                          fontFamily: 'Nunito',
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Continue with Google',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Nunito',
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'or',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.redLight,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.red.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: AppColors.red, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.red,
-                fontFamily: 'Nunito',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

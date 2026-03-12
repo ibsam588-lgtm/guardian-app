@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
-import '../../models/models.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -28,7 +27,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: const _BottomNav(currentIndex: 0),
+      bottomNavigationBar: const GuardianBottomNav(currentIndex: 0),
     );
   }
 }
@@ -721,9 +720,9 @@ class _PinKey extends StatelessWidget {
 }
 
 // ── Bottom Nav ─────────────────────────────────
-class _BottomNav extends StatelessWidget {
+class GuardianBottomNav extends StatelessWidget {
   final int currentIndex;
-  const _BottomNav({required this.currentIndex});
+  const GuardianBottomNav({required this.currentIndex});
 
   @override
   Widget build(BuildContext context) {

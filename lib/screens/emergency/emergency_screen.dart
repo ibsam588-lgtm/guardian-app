@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../home/home_screen.dart' show _BottomNav;
+import '../home/home_screen.dart' show GuardianBottomNav;
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
@@ -11,6 +11,7 @@ class EmergencyScreen extends StatefulWidget {
 
 class _EmergencyScreenState extends State<EmergencyScreen>
     with SingleTickerProviderStateMixin {
+  // ignore: unused_field
   bool _sosTriggered = false;
   late AnimationController _pulse;
 
@@ -212,7 +213,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomNav(currentIndex: 4),
+      bottomNavigationBar: const GuardianBottomNav(currentIndex: 4),
     );
   }
 }
@@ -550,5 +551,4 @@ class _AudioWaveform extends StatelessWidget {
   }
 }
 
-// Re-export _BottomNav for use in other screens
 const surfaceSecondary = AppColors.surfaceSecondary;

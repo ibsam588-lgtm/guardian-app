@@ -114,7 +114,7 @@ class _LocationScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomNav(currentIndex: 1),
+      bottomNavigationBar: const GuardianBottomNav(currentIndex: 1),
     );
   }
 }
@@ -149,7 +149,7 @@ class _CommsScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomNav(currentIndex: 3),
+      bottomNavigationBar: const GuardianBottomNav(currentIndex: 3),
     );
   }
 }

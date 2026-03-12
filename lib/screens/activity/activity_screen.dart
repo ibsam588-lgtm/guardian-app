@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
-import '../home/home_screen.dart' show _BottomNav;
+import '../home/home_screen.dart' show GuardianBottomNav;
 
 class ActivityScreen extends StatelessWidget {
   const ActivityScreen({super.key});
@@ -26,7 +26,7 @@ class ActivityScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomNav(currentIndex: 2),
+      bottomNavigationBar: const GuardianBottomNav(currentIndex: 2),
     );
   }
 }

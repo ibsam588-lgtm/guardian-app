@@ -35,7 +35,6 @@ class AppTheme {
       primary: AppColors.blue,
       secondary: AppColors.navy,
       surface: AppColors.surface,
-      background: AppColors.background,
       error: AppColors.red,
     ),
     scaffoldBackgroundColor: AppColors.background,

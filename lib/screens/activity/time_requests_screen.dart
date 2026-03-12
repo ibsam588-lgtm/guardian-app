@@ -410,25 +410,21 @@ class _HistoryRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color statusColor;
-    Color statusBg;
     String statusLabel;
     IconData statusIcon;
 
     switch (request.status) {
       case TimeRequestStatus.approved:
         statusColor = AppColors.green;
-        statusBg = AppColors.greenLight;
         statusLabel = 'Approved · ${request.grantedMinutes}m granted';
         statusIcon = Icons.check_circle_outline;
       case TimeRequestStatus.denied:
         statusColor = AppColors.red;
-        statusBg = AppColors.redLight;
         statusLabel = 'Denied';
         statusIcon = Icons.cancel_outlined;
       case TimeRequestStatus.expired:
       default:
         statusColor = AppColors.textMuted;
-        statusBg = AppColors.surfaceSecondary;
         statusLabel = 'Expired — no response';
         statusIcon = Icons.timer_off_outlined;
     }

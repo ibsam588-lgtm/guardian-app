@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
-import 'login_screen.dart' show _GoogleSignInButton, _Divider, _ErrorBanner;
+import '../../widgets/auth_widgets.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -114,10 +114,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
                 const SizedBox(height: 28),
 
-                _GoogleSignInButton(loading: _googleLoading, onTap: _googleSignUp),
+                GoogleSignInButton(loading: _googleLoading, onTap: _googleSignUp),
 
                 const SizedBox(height: 20),
-                _Divider(),
+                AuthDivider(),
                 const SizedBox(height: 20),
 
                 // Name
@@ -244,7 +244,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  _ErrorBanner(message: _error!),
+                  ErrorBanner(message: _error!),
                 ],
 
                 const SizedBox(height: 24),
