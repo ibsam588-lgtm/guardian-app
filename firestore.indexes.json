@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "time_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parentUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "time_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parentUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parentUid", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "app_usage",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "minutesUsed", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
