@@ -60,8 +60,8 @@ class SubscriptionService {
       isActive: isInTrial,
       expiryDate: trialEnds,
       isTrial: isInTrial,
-      daysRemainingInTrial: isInTrial
-          ? trialEnds!.difference(DateTime.now()).inDays
+      daysRemainingInTrial: (trialEnds != null && isInTrial)
+          ? trialEnds.difference(DateTime.now()).inDays
           : 0,
     );
   }
