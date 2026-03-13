@@ -48,7 +48,7 @@ dependencies:
   package_info_plus: ^8.1.1
 
   # Audio (Listen feature)
-  record: ^5.1.2
+  record: ^5.2.0
   just_audio: ^0.9.42
 
 dev_dependencies:
