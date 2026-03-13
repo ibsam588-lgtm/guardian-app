@@ -228,7 +228,7 @@ class _MapCard extends StatelessWidget {
         ),
         Padding(padding: const EdgeInsets.all(14),
           child: Row(children: [
-            const Icon(Icons.location_on_rounded, color: AppColors.gold, size: 18),
+            const Icon(Icons.location_on_rounded, color: AppColors.amber, size: 18),
             const SizedBox(width: 8),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
@@ -288,7 +288,7 @@ class _HistoryTile extends StatelessWidget {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6)]),
       child: Row(children: [
         Container(width: 8, height: 8,
-            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle)),
+            decoration: const BoxDecoration(color: AppColors.amber, shape: BoxShape.circle)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(point.address.isNotEmpty ? point.address
