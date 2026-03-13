@@ -13,6 +13,8 @@ class ChildProfile {
   final String lastLocation;
   final DateTime lastSeen;
   final double batteryLevel;
+  final double? lastLat;
+  final double? lastLng;
 
   const ChildProfile({
     required this.id,
@@ -26,6 +28,8 @@ class ChildProfile {
     required this.lastLocation,
     required this.lastSeen,
     required this.batteryLevel,
+    this.lastLat,
+    this.lastLng,
   });
 
   factory ChildProfile.fromFirestore(Map<String, dynamic> data, String id) {
@@ -41,6 +45,8 @@ class ChildProfile {
       lastLocation: data['lastLocation'] ?? '',
       lastSeen: (data['lastSeen'] as dynamic)?.toDate() ?? DateTime.now(),
       batteryLevel: (data['batteryLevel'] as num?)?.toDouble() ?? 0.0,
+      lastLat: (data['lastLat'] as num?)?.toDouble(),
+      lastLng: (data['lastLng'] as num?)?.toDouble(),
     );
   }
 
@@ -55,6 +61,8 @@ class ChildProfile {
     'lastLocation': lastLocation,
     'lastSeen': lastSeen,
     'batteryLevel': batteryLevel,
+    if (lastLat != null) 'lastLat': lastLat,
+    if (lastLng != null) 'lastLng': lastLng,
   };
 }
 

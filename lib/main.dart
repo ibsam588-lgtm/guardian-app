@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/location/location_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
@@ -41,7 +42,7 @@ final _router = GoRouter(
     GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
     GoRoute(
       path: '/location',
-      builder: (_, __) => const _LocationScreen(),
+      builder: (context, state) => LocationScreen(childId: state.extra as String? ?? ''),
     ),
     GoRoute(
       path: '/activity',

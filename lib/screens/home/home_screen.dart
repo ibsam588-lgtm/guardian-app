@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 
@@ -172,7 +174,16 @@ class _MapPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.go('/location'),
+      onTap: () async {
+        final snap = await FirebaseFirestore.instance
+            .collection('children')
+            .where('parentId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+            .limit(1)
+            .get();
+        if (snap.docs.isNotEmpty && context.mounted) {
+          context.go('/location', extra: snap.docs.first.id);
+        }
+      },
       child: Container(
         height: 200,
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
