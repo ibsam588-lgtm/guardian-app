@@ -30,8 +30,11 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          mkdir -p android/app
-          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          else
+            echo '{"project_info":{"project_number":"913378360413","project_id":"guardian-e28d4","storage_bucket":"guardian-e28d4.firebasestorage.app"},"client":[{"client_info":{"mobilesdk_app_id":"1:913378360413:android:efcc9c9a1e89e8a270e1b4","android_client_info":{"package_name":"com.guardian.app"}},"oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyCSgmed57xmEAJm2zKbyIGc5LvX_zYg6Hg"}],"services":{"appinvite_service":{"other_platform_oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}]}}}],"configuration_version":"1"}' > android/app/google-services.json
+          fi
 
       - name: Get dependencies
         run: flutter pub get
@@ -65,14 +68,19 @@ jobs:
           cache: true
 
       - name: Create secrets
-        run: cp lib/config/secrets.example.dart lib/config/secrets.dart
+        run: |
+          mkdir -p lib/config
+          cp lib/config/secrets.example.dart lib/config/secrets.dart
 
       - name: Create google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          mkdir -p android/app
-          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          else
+            echo '{"project_info":{"project_number":"913378360413","project_id":"guardian-e28d4","storage_bucket":"guardian-e28d4.firebasestorage.app"},"client":[{"client_info":{"mobilesdk_app_id":"1:913378360413:android:efcc9c9a1e89e8a270e1b4","android_client_info":{"package_name":"com.guardian.app"}},"oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyCSgmed57xmEAJm2zKbyIGc5LvX_zYg6Hg"}],"services":{"appinvite_service":{"other_platform_oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}]}}}],"configuration_version":"1"}' > android/app/google-services.json
+          fi
 
       - name: Setup keystore
         env:
@@ -81,13 +89,17 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/guardian.keystore
-          cat > android/key.properties << EOF
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/guardian.keystore
+            cat > android/key.properties << EOF
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
           storeFile=guardian.keystore
           EOF
+          else
+            echo "No keystore – using debug signing for now"
+          fi
 
       - name: Get dependencies
         run: flutter pub get
@@ -117,6 +129,7 @@ jobs:
           name: guardian-release-aab
 
       - name: Deploy to Play Store internal track
+        if: secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON != ''
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
@@ -148,4 +161,8 @@ jobs:
       - name: Deploy functions
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: firebase deploy --only functions --token "$FIREBASE_TOKEN" --project guardian-e28d4
+        run: |
+          firebase deploy --only functions \
+            --token "$FIREBASE_TOKEN" \
+            --project guardian-e28d4 \
+            --force
