@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
-import '../../widgets/bottom_nav.dart';
-import '../home/home_screen.dart' show AppColors;
+import '../../theme/app_theme.dart';
+import '../home/home_screen.dart' show GuardianBottomNav;
 
 class LocationScreen extends StatefulWidget {
   final String childId;

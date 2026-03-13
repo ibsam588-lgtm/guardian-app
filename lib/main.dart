@@ -79,46 +79,6 @@ class GuardIanApp extends StatelessWidget {
 
 // ─── Placeholder screens (filled from own files in full project) ───────────
 
-class _LocationScreen extends StatelessWidget {
-  const _LocationScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Live Location'),
-        backgroundColor: AppColors.navy,
-        automaticallyImplyLeading: false,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.map, size: 64, color: AppColors.textMuted),
-            const SizedBox(height: 16),
-            const Text('Live GPS Map', style: TextStyle(
-              fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w700,
-            )),
-            const SizedBox(height: 8),
-            const Text(
-              'google_maps_flutter widget renders here\nwith real-time child location pin',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito'),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go('/home'),
-              style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
-              child: const Text('Back to Home'),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: const GuardianBottomNav(currentIndex: 1),
-    );
-  }
-}
 
 class _CommsScreen extends StatelessWidget {
   const _CommsScreen();
