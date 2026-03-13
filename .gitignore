@@ -40,7 +40,6 @@ lib/**/*.freezed.dart
 
 # ── Firebase ──────────────────────────────────
 # NEVER commit these — add them manually after cloning
-google-services.json
 GoogleService-Info.plist
 .firebaserc
 firebase-debug.log
@@ -55,7 +54,6 @@ firebase/functions/.runtimeconfig.json
 .env.*
 secrets.dart
 lib/config/secrets.dart
-**/android/app/google-services.json
 **/ios/Runner/GoogleService-Info.plist
 
 # RevenueCat keys

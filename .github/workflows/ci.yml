@@ -21,14 +21,10 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Create secrets.dart from example
+      - name: Create secrets.dart
         run: |
           mkdir -p lib/config
           cp lib/config/secrets.example.dart lib/config/secrets.dart
-
-      - name: Create google-services.json
-        run: |
-          echo '${{ secrets.GOOGLE_SERVICES_JSON || '"'"'{"project_info":{"project_number":"913378360413","project_id":"guardian-e28d4","storage_bucket":"guardian-e28d4.firebasestorage.app"},"client":[{"client_info":{"mobilesdk_app_id":"1:913378360413:android:efcc9c9a1e89e8a270e1b4","android_client_info":{"package_name":"com.guardian.app"}},"oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyCSgmed57xmEAJm2zKbyIGc5LvX_zYg6Hg"}],"services":{"appinvite_service":{"other_platform_oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}]}}}],"configuration_version":"1"}'"'"' }}' > android/app/google-services.json
 
       - name: Get dependencies
         run: flutter pub get
@@ -37,7 +33,7 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Run tests
-        run: flutter test --coverage
+        run: flutter test
 
   # ── Build Android AAB (release) ─────────────
   build-android:
@@ -61,17 +57,10 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Create secrets
+      - name: Create secrets.dart
         run: |
           mkdir -p lib/config
           cp lib/config/secrets.example.dart lib/config/secrets.dart
-
-      - name: Create google-services.json
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: |
-          FALLBACK='{"project_info":{"project_number":"913378360413","project_id":"guardian-e28d4","storage_bucket":"guardian-e28d4.firebasestorage.app"},"client":[{"client_info":{"mobilesdk_app_id":"1:913378360413:android:efcc9c9a1e89e8a270e1b4","android_client_info":{"package_name":"com.guardian.app"}},"oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyCSgmed57xmEAJm2zKbyIGc5LvX_zYg6Hg"}],"services":{"appinvite_service":{"other_platform_oauth_client":[{"client_id":"913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com","client_type":3}]}}}],"configuration_version":"1"}'
-          echo "${GOOGLE_SERVICES_JSON:-$FALLBACK}" > android/app/google-services.json
 
       - name: Setup keystore (optional)
         env:
@@ -85,7 +74,7 @@ jobs:
             printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=guardian.keystore\n" \
               "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
           else
-            echo "No keystore secret set – will use debug signing"
+            echo "No keystore – using debug signing"
           fi
 
       - name: Get dependencies
