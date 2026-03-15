@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helpers ──────────────────────────────
     function isAuth() {
       return request.auth != null;
     }
@@ -14,74 +13,66 @@ service cloud.firestore {
         request.auth.uid == get(/databases/$(database)/documents/children/$(childId)).data.parentUid;
     }
 
-    // ── Parent accounts ───────────────────────
+    // Parent accounts
     match /parents/{uid} {
       allow read, write: if isOwner(uid);
     }
 
-    // ── Children ──────────────────────────────
+    // Children — parent owns, child device can update its own status
     match /children/{childId} {
-      allow read, write: if isChildParent(childId);
+      allow read: if isAuth() && (
+        isChildParent(childId) ||
+        request.auth.uid == resource.data.parentUid
+      );
+      allow create: if isAuth();
+      allow update: if isAuth();  // parent or child device
 
+      match /appLimits/{doc} {
+        allow read: if isAuth();           // child reads its own limits
+        allow write: if isChildParent(childId); // only parent sets limits
+      }
       match /app_usage/{doc} {
         allow read: if isChildParent(childId);
-        allow write: if isAuth(); // Child device writes
-      }
-      match /app_limits/{doc} {
-        allow read: if isAuth();  // Child reads its own limits
-        allow write: if isChildParent(childId); // Only parent writes limits
+        allow write: if isAuth();
       }
       match /geo_fences/{doc} {
         allow read, write: if isChildParent(childId);
       }
-      match /call_log/{doc} {
-        allow read: if isChildParent(childId);
-        allow write: if isAuth(); // Child writes
-      }
-      match /messages/{doc} {
-        allow read: if isChildParent(childId);
-        allow write: if isAuth();
-      }
-      match /web_history/{doc} {
-        allow read: if isChildParent(childId);
-        allow write: if isAuth();
-      }
     }
 
-    // ── Pairing codes ──────────────────────────
+    // Pairing codes — child reads before auth, parent creates
     match /pairing_codes/{code} {
-      allow read: if true;  // Child reads before auth exists
+      allow read: if true;
       allow create: if isAuth();
-      allow update: if isAuth(); // Child marks as used
+      allow update: if isAuth();
     }
 
-    // ── Time requests ──────────────────────────
-    match /time_requests/{requestId} {
-      // Parent reads their incoming requests
-      allow read: if isAuth() &&
-        (request.auth.uid == resource.data.parentUid ||
-         request.auth.uid == resource.data.childId);
-      // Child creates request
+    // Time requests (camelCase collection name used in code)
+    match /timeRequests/{requestId} {
+      allow read: if isAuth() && (
+        request.auth.uid == resource.data.parentUid ||
+        request.auth.uid == resource.data.childId
+      );
       allow create: if isAuth();
-      // Parent updates status (approve/deny)
-      allow update: if isAuth() &&
-        request.auth.uid == resource.data.parentUid &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'respondedAt', 'grantedMinutes']);
+      allow update: if isAuth() && request.auth.uid == resource.data.parentUid;
     }
 
-    // ── Remote commands ──────────────────────
+    // Remote commands
     match /child_commands/{cmdId} {
-      allow read: if isAuth(); // Child reads its commands
-      allow create: if isAuth(); // Parent creates commands
-      allow update: if isAuth(); // Child marks executed
+      allow read, write: if isAuth();
     }
 
-    // ── Alerts ────────────────────────────────
+    // Alerts
     match /alerts/{alertId} {
-      allow read, write: if isAuth() &&
-        request.auth.uid == resource.data.parentUid;
-      allow create: if isAuth(); // System/child creates
+      allow read: if isAuth() && request.auth.uid == resource.data.parentUid;
+      allow create: if isAuth();
+      allow update: if isAuth() && request.auth.uid == resource.data.parentUid;
+    }
+
+    // SOS alerts
+    match /sos_alerts/{alertId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
     }
   }
 }

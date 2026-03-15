@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
-import '../../services/time_request_service.dart';
+import '../../services/child_service.dart';
 
 /// Full screen for managing all app limits for a child
 class AppLimitsScreen extends StatelessWidget {
@@ -13,18 +14,6 @@ class AppLimitsScreen extends StatelessWidget {
     required this.childName,
   });
 
-  // Dummy app list (in real app: fetched from child device via Firestore)
-  static final _mockApps = [
-    _AppMock('TikTok', 'com.zhiliaoapp.musically', '#EF4444', 120, 120, true),
-    _AppMock('YouTube', 'com.google.android.youtube', '#FF0000', 45, 90, true),
-    _AppMock('Roblox', 'com.roblox.client', '#8B5CF6', 30, 60, true),
-    _AppMock('Instagram', 'com.instagram.android', '#E1306C', 0, 60, false),
-    _AppMock('WhatsApp', 'com.whatsapp', '#25D366', 22, 0, true),
-    _AppMock('Minecraft', 'com.mojang.minecraftpe', '#6D9B3A', 20, 45, true),
-    _AppMock('Snapchat', 'com.snapchat.android', '#FFFC00', 10, 30, true),
-    _AppMock('Discord', 'com.discord', '#5865F2', 15, 45, true),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,30 +21,84 @@ class AppLimitsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('$childName\'s App Limits'),
         backgroundColor: AppColors.navy,
+        foregroundColor: Colors.white,
       ),
-      body: ListView(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddAppSheet(context),
+        backgroundColor: AppColors.blue,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Add App', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      ),
+      body: Column(
         children: [
           _BannerTip(),
-          const SizedBox(height: 8),
-          ..._mockApps.map((app) => _AppLimitTile(
-            app: app,
-            childId: childId,
-          )),
-          const SizedBox(height: 80),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('children')
+                  .doc(childId)
+                  .collection('appLimits')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.apps_rounded, size: 64, color: AppColors.textMuted),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No app limits set yet',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tap + Add App to set limits on your child\'s apps',
+                          style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 100),
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final data = docs[i].data() as Map<String, dynamic>;
+                    return _AppLimitTile(
+                      docId: docs[i].id,
+                      data: data,
+                      childId: childId,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
   }
+
+  void _showAddAppSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddAppSheet(childId: childId),
+    );
+  }
 }
 
-class _AppMock {
-  final String name, packageName, color;
-  final int usedMinutes, limitMinutes;
-  final bool hasLimit;
-  const _AppMock(this.name, this.packageName, this.color,
-      this.usedMinutes, this.limitMinutes, this.hasLimit);
-}
-
+// ── Banner tip ──────────────────────────────────────────────────────────────
 class _BannerTip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -79,10 +122,10 @@ class _BannerTip extends StatelessWidget {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Tap any app to set limits. Enable "Allow time requests" so Emma can ask you for extra minutes when needed.',
+              'Set time limits for each app. Your child can request extra time if allowed.',
               style: TextStyle(
                 fontSize: 12, color: AppColors.blue,
-                fontFamily: 'Nunito', fontWeight: FontWeight.w600, height: 1.4,
+                fontWeight: FontWeight.w600, height: 1.4,
               ),
             ),
           ),
@@ -92,25 +135,26 @@ class _BannerTip extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Per-app tile with tap-to-edit
-// ─────────────────────────────────────────────
+// ── Per-app tile ───────────────────────────────────────────────────────────
 class _AppLimitTile extends StatelessWidget {
-  final _AppMock app;
+  final String docId;
+  final Map<String, dynamic> data;
   final String childId;
 
-  const _AppLimitTile({required this.app, required this.childId});
-
-  Color get _color => _hexColor(app.color);
-  Color get _bg => _color.withValues(alpha: 0.1);
+  const _AppLimitTile({required this.docId, required this.data, required this.childId});
 
   @override
   Widget build(BuildContext context) {
-    final isMaxed = app.hasLimit && app.limitMinutes > 0 && app.usedMinutes >= app.limitMinutes;
-    final isBlocked = app.hasLimit && app.limitMinutes == 0;
+    final appName = data['appName'] as String? ?? docId;
+    final limitMinutes = data['dailyLimitMinutes'] as int? ?? 60;
+    final isEnabled = data['isEnabled'] as bool? ?? true;
+    final allowRequests = data['allowTimeRequests'] as bool? ?? true;
+    final isBlocked = isEnabled && limitMinutes == 0;
+
+    final color = isBlocked ? AppColors.red : AppColors.blue;
 
     return GestureDetector(
-      onTap: () => _showEditSheet(context),
+      onTap: () => _showEditSheet(context, appName, limitMinutes, isEnabled, allowRequests),
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         padding: const EdgeInsets.all(14),
@@ -118,476 +162,338 @@ class _AppLimitTile extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isMaxed ? AppColors.red.withValues(alpha: 0.4) : AppColors.border,
-            width: isMaxed ? 1.5 : 1,
+            color: isBlocked ? AppColors.red.withValues(alpha: 0.4) : AppColors.border,
+            width: isBlocked ? 1.5 : 1,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                // App icon
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: _bg, borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: Text(app.name[0], style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w800,
-                      color: _color, fontFamily: 'Nunito',
-                    )),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Name + status
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(app.name, style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 15,
-                      )),
-                      const SizedBox(height: 2),
-                      if (!app.hasLimit)
-                        const Text('No limit set', style: TextStyle(
-                          color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 12,
-                        ))
-                      else if (isBlocked)
-                        _StatusPill('Blocked', AppColors.red, AppColors.redLight)
-                      else if (isMaxed)
-                        _StatusPill('Limit reached', AppColors.red, AppColors.redLight)
-                      else
-                        Text(
-                          '${_fmtMins(app.usedMinutes)} of ${_fmtMins(app.limitMinutes)} used',
-                          style: const TextStyle(
-                            color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 12,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // Edit chevron
-                const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
-              ],
-            ),
-
-            // Progress bar (only when limit is set and not blocked)
-            if (app.hasLimit && app.limitMinutes > 0) ...[
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: (app.usedMinutes / app.limitMinutes).clamp(0.0, 1.0),
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  valueColor: AlwaysStoppedAnimation(isMaxed ? AppColors.red : _color),
-                  minHeight: 6,
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  appName.isNotEmpty ? appName[0].toUpperCase() : '?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
                 ),
               ),
-            ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(appName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  const SizedBox(height: 2),
+                  if (!isEnabled)
+                    const Text('Disabled', style: TextStyle(color: AppColors.textMuted, fontSize: 12))
+                  else if (isBlocked)
+                    _StatusPill('Blocked', AppColors.red, AppColors.redLight)
+                  else
+                    Text(
+                      '${limitMinutes}m / day${allowRequests ? ' • requests allowed' : ''}',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
           ],
         ),
       ),
     );
   }
 
-  void _showEditSheet(BuildContext context) {
+  void _showEditSheet(BuildContext context, String appName, int limitMinutes, bool isEnabled, bool allowRequests) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AppLimitEditSheet(app: app, childId: childId),
+      builder: (_) => _EditLimitSheet(
+        childId: childId,
+        packageName: docId,
+        appName: appName,
+        currentLimit: limitMinutes,
+        isEnabled: isEnabled,
+        allowRequests: allowRequests,
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final Color fg, bg;
+  const _StatusPill(this.label, this.fg, this.bg);
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+// ── Add App Sheet ─────────────────────────────────────────────────────────
+class _AddAppSheet extends StatefulWidget {
+  final String childId;
+  const _AddAppSheet({required this.childId});
+  @override
+  State<_AddAppSheet> createState() => _AddAppSheetState();
+}
+
+class _AddAppSheetState extends State<_AddAppSheet> {
+  final _nameCtrl = TextEditingController();
+  final _pkgCtrl = TextEditingController();
+  int _limitMinutes = 60;
+  bool _allowRequests = true;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _pkgCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Add App Limit', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'App Name (e.g. YouTube)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pkgCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Package Name (e.g. com.google.android.youtube)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Text('Daily limit:', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Slider(
+                    value: _limitMinutes.toDouble(),
+                    min: 0,
+                    max: 480,
+                    divisions: 32,
+                    label: _limitMinutes == 0 ? 'Blocked' : '${_limitMinutes}m',
+                    onChanged: (v) => setState(() => _limitMinutes = v.round()),
+                  ),
+                ),
+                SizedBox(
+                  width: 60,
+                  child: Text(
+                    _limitMinutes == 0 ? 'Blocked' : '${_limitMinutes}m',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+            SwitchListTile(
+              value: _allowRequests,
+              onChanged: (v) => setState(() => _allowRequests = v),
+              title: const Text('Allow time requests', style: TextStyle(fontWeight: FontWeight.w600)),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                    : const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  String _fmtMins(int m) {
-    if (m == 0) return '0m';
-    if (m < 60) return '${m}m';
-    final h = m ~/ 60;
-    final rem = m % 60;
-    return rem > 0 ? '${h}h ${rem}m' : '${h}h';
+  Future<void> _save() async {
+    if (_nameCtrl.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    final pkg = _pkgCtrl.text.trim().isNotEmpty
+        ? _pkgCtrl.text.trim()
+        : _nameCtrl.text.trim().toLowerCase().replaceAll(' ', '_');
+
+    await ChildService().setAppLimit(
+      childId: widget.childId,
+      packageName: pkg,
+      appName: _nameCtrl.text.trim(),
+      limitMinutes: _limitMinutes,
+      allowTimeRequests: _allowRequests,
+    );
+    if (mounted) Navigator.pop(context);
   }
 }
 
-Widget _StatusPill(String label, Color color, Color bg) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
-    child: Text(label, style: TextStyle(
-      color: color, fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Nunito',
-    )),
-  );
-}
-
-// ─────────────────────────────────────────────
-//  Bottom Sheet: Edit app limit
-// ─────────────────────────────────────────────
-class _AppLimitEditSheet extends StatefulWidget {
-  final _AppMock app;
-  final String childId;
-  const _AppLimitEditSheet({required this.app, required this.childId});
-
+// ── Edit Limit Sheet ──────────────────────────────────────────────────────
+class _EditLimitSheet extends StatefulWidget {
+  final String childId, packageName, appName;
+  final int currentLimit;
+  final bool isEnabled, allowRequests;
+  const _EditLimitSheet({
+    required this.childId, required this.packageName, required this.appName,
+    required this.currentLimit, required this.isEnabled, required this.allowRequests,
+  });
   @override
-  State<_AppLimitEditSheet> createState() => _AppLimitEditSheetState();
+  State<_EditLimitSheet> createState() => _EditLimitSheetState();
 }
 
-class _AppLimitEditSheetState extends State<_AppLimitEditSheet> {
-  late bool _hasLimit;
-  late bool _isBlocked;
+class _EditLimitSheetState extends State<_EditLimitSheet> {
+  late int _limitMinutes;
+  late bool _isEnabled;
   late bool _allowRequests;
-  late double _limitHours;
-  late double _limitMins;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _hasLimit = widget.app.hasLimit;
-    _isBlocked = widget.app.limitMinutes == 0 && widget.app.hasLimit;
-    _allowRequests = true;
-    final total = widget.app.limitMinutes > 0 ? widget.app.limitMinutes : 60;
-    _limitHours = (total ~/ 60).toDouble();
-    _limitMins = ((total % 60) ~/ 15 * 15).toDouble(); // round to 15-min steps
+    _limitMinutes = widget.currentLimit;
+    _isEnabled = widget.isEnabled;
+    _allowRequests = widget.allowRequests;
   }
 
-  int get _totalLimitMins => (_limitHours * 60 + _limitMins).toInt();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(widget.appName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.red),
+                  onPressed: _delete,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(widget.packageName, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            const SizedBox(height: 20),
+            SwitchListTile(
+              value: _isEnabled,
+              onChanged: (v) => setState(() => _isEnabled = v),
+              title: const Text('Limit enabled', style: TextStyle(fontWeight: FontWeight.w600)),
+              contentPadding: EdgeInsets.zero,
+            ),
+            if (_isEnabled) ...[
+              Row(
+                children: [
+                  const Text('Daily limit:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Slider(
+                      value: _limitMinutes.toDouble(),
+                      min: 0,
+                      max: 480,
+                      divisions: 32,
+                      label: _limitMinutes == 0 ? 'Blocked' : '${_limitMinutes}m',
+                      onChanged: (v) => setState(() => _limitMinutes = v.round()),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: Text(
+                      _limitMinutes == 0 ? 'Blocked' : '${_limitMinutes}m',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+              SwitchListTile(
+                value: _allowRequests,
+                onChanged: (v) => setState(() => _allowRequests = v),
+                title: const Text('Allow time requests', style: TextStyle(fontWeight: FontWeight.w600)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                    : const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final svc = TimeRequestService();
-    await svc.saveAppLimit(
-      childId: widget.childId,
-      packageName: widget.app.packageName,
-      appName: widget.app.name,
-      appIconColor: widget.app.color,
-      dailyLimitMinutes: _isBlocked ? 0 : (_hasLimit ? _totalLimitMins : 0),
-      isEnabled: _hasLimit,
-      allowTimeRequests: _allowRequests,
-    );
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${widget.app.name} limit saved!'),
-        backgroundColor: AppColors.green,
-      ));
-    }
+    await FirebaseFirestore.instance
+        .collection('children')
+        .doc(widget.childId)
+        .collection('appLimits')
+        .doc(widget.packageName)
+        .set({
+      'appName': widget.appName,
+      'packageName': widget.packageName,
+      'dailyLimitMinutes': _limitMinutes,
+      'isEnabled': _isEnabled,
+      'allowTimeRequests': _allowRequests,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    if (mounted) Navigator.pop(context);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final color = _hexColor(widget.app.color);
-    final bg = color.withValues(alpha: 0.1);
-
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        left: 24, right: 24, top: 20,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(child: Container(
-            width: 40, height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border, borderRadius: BorderRadius.circular(2)),
-          )),
-          const SizedBox(height: 20),
-
-          // App header
-          Row(
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-                child: Center(child: Text(widget.app.name[0], style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w800,
-                  color: color, fontFamily: 'Nunito',
-                ))),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.app.name, style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Nunito',
-                  )),
-                  const Text('Set daily time limit', style: TextStyle(
-                    color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 13,
-                  )),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Enable limit toggle
-          _SheetToggle(
-            title: 'Enable time limit',
-            subtitle: 'Restrict daily usage for this app',
-            value: _hasLimit,
-            onChanged: (v) => setState(() => _hasLimit = v),
-          ),
-
-          if (_hasLimit) ...[
-            const SizedBox(height: 16),
-
-            // Block entirely toggle
-            _SheetToggle(
-              title: 'Block entirely',
-              subtitle: 'App is completely inaccessible',
-              value: _isBlocked,
-              activeColor: AppColors.red,
-              onChanged: (v) => setState(() => _isBlocked = v),
-            ),
-
-            if (!_isBlocked) ...[
-              const SizedBox(height: 20),
-
-              // Time picker
-              const Text('Daily limit', style: TextStyle(
-                fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 14,
-              )),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSecondary,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  children: [
-                    // Hours slider
-                    _SliderRow(
-                      label: 'Hours',
-                      value: _limitHours,
-                      min: 0, max: 8, divisions: 8,
-                      displayValue: '${_limitHours.toInt()}h',
-                      color: color,
-                      onChanged: (v) => setState(() => _limitHours = v),
-                    ),
-                    const SizedBox(height: 12),
-                    // Minutes slider
-                    _SliderRow(
-                      label: 'Minutes',
-                      value: _limitMins,
-                      min: 0, max: 45, divisions: 3,
-                      displayValue: '${_limitMins.toInt()}m',
-                      color: color,
-                      onChanged: (v) => setState(() => _limitMins = v),
-                    ),
-                    const Divider(height: 20, color: AppColors.border),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Total daily limit', style: TextStyle(
-                          fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 13,
-                        )),
-                        Text(
-                          _totalLimitMins == 0
-                              ? 'No limit'
-                              : _fmtMins(_totalLimitMins),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800, fontFamily: 'Nunito',
-                            fontSize: 16, color: color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Quick presets
-              const Text('Quick presets', style: TextStyle(
-                fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 14,
-              )),
-              const SizedBox(height: 8),
-              Row(
-                children: [15, 30, 45, 60, 90, 120].map((min) => GestureDetector(
-                  onTap: () => setState(() {
-                    _limitHours = (min ~/ 60).toDouble();
-                    _limitMins = (min % 60).toDouble();
-                  }),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _totalLimitMins == min ? color : AppColors.surfaceSecondary,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _totalLimitMins == min ? color : AppColors.border,
-                      ),
-                    ),
-                    child: Text(_fmtMins(min), style: TextStyle(
-                      fontFamily: 'Nunito',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _totalLimitMins == min ? Colors.white : AppColors.textMuted,
-                    )),
-                  ),
-                )).toList(),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Allow time requests
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _allowRequests ? AppColors.greenLight : AppColors.surfaceSecondary,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: _allowRequests
-                        ? AppColors.green.withValues(alpha: 0.4)
-                        : AppColors.border,
-                  ),
-                ),
-                child: _SheetToggle(
-                  title: 'Allow time requests',
-                  subtitle: 'Emma can ask you for extra time when limit is reached',
-                  value: _allowRequests,
-                  activeColor: AppColors.green,
-                  onChanged: (v) => setState(() => _allowRequests = v),
-                  noBorder: true,
-                ),
-              ),
-            ],
-          ],
-
-          const SizedBox(height: 24),
-
-          // Save button
-          ElevatedButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(height: 22, width: 22,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                : const Text('Save Limit'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _fmtMins(int m) {
-    if (m < 60) return '${m}m';
-    final h = m ~/ 60;
-    final rem = m % 60;
-    return rem > 0 ? '${h}h ${rem}m' : '${h}h';
+  Future<void> _delete() async {
+    await FirebaseFirestore.instance
+        .collection('children')
+        .doc(widget.childId)
+        .collection('appLimits')
+        .doc(widget.packageName)
+        .delete();
+    if (mounted) Navigator.pop(context);
   }
 }
-
-// ─────────────────────────────────────────────
-//  Reusable widgets
-// ─────────────────────────────────────────────
-class _SheetToggle extends StatelessWidget {
-  final String title, subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final Color activeColor;
-  final bool noBorder;
-
-  const _SheetToggle({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-    this.activeColor = AppColors.blue,
-    this.noBorder = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(
-                fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 14,
-              )),
-              Text(subtitle, style: const TextStyle(
-                color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 12,
-              )),
-            ],
-          ),
-        ),
-        Switch(value: value, onChanged: onChanged, activeColor: activeColor),
-      ],
-    );
-  }
-}
-
-class _SliderRow extends StatelessWidget {
-  final String label, displayValue;
-  final double value, min, max;
-  final int divisions;
-  final Color color;
-  final ValueChanged<double> onChanged;
-
-  const _SliderRow({
-    required this.label, required this.value, required this.min,
-    required this.max, required this.divisions, required this.displayValue,
-    required this.color, required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 60,
-          child: Text(label, style: const TextStyle(
-            color: AppColors.textMuted, fontFamily: 'Nunito',
-            fontSize: 12, fontWeight: FontWeight.w600,
-          )),
-        ),
-        Expanded(
-          child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: color,
-              thumbColor: color,
-              inactiveTrackColor: AppColors.border,
-              overlayColor: color.withValues(alpha: 0.15),
-              trackHeight: 4,
-            ),
-            child: Slider(
-              value: value, min: min, max: max,
-              divisions: divisions, onChanged: onChanged,
-            ),
-          ),
-        ),
-        SizedBox(
-          width: 38,
-          child: Text(displayValue, textAlign: TextAlign.right,
-              style: TextStyle(
-                fontWeight: FontWeight.w800, fontFamily: 'Nunito',
-                fontSize: 13, color: color,
-              )),
-        ),
-      ],
-    );
-  }
-}
-
-Color _hexColor(String hex) {
-  final h = hex.replaceAll('#', '');
-  return Color(int.parse('FF$h', radix: 16));
-}
-
-// Barrel export
-const surfaceSecondary = AppColors.surfaceSecondary;

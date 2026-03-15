@@ -8,15 +8,36 @@ class ChildService {
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
   // ── Generate 6-digit pairing code ─────────────
+  // FIX: Now also creates the child document in Firestore so the child app
+  // can update it during pairing. childId is stored in the pairing code doc.
   Future<String> createChildPairingCode({
     required String childName,
     required int childAge,
   }) async {
     final code = _generateCode();
-    final docRef = _db.collection('pairing_codes').doc(code);
-    await docRef.set({
+
+    // 1. Create the child document first so child app can .update() it
+    final childRef = _db.collection('children').doc();
+    await childRef.set({
+      'name': childName,
+      'age': childAge,
+      'parentUid': _uid,
+      'isOnline': false,
+      'lastLocation': '',
+      'batteryLevel': 0.0,
+      'deviceId': '',
+      'deviceName': '',
+      'deviceOs': 'android',
+      'avatarUrl': '',
+      'lastSeen': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Create pairing code with childId reference
+    await _db.collection('pairing_codes').doc(code).set({
       'code': code,
       'parentUid': _uid,
+      'childId': childRef.id,   // FIX: include childId
       'childName': childName,
       'childAge': childAge,
       'createdAt': FieldValue.serverTimestamp(),
@@ -25,15 +46,16 @@ class ChildService {
       ),
       'used': false,
     });
+
     return code;
   }
 
   // ── Listen for pairing completion ─────────────
+  // FIX: Watch for 'used == true' only — deviceId is on the children doc
   Stream<bool> watchPairingCode(String code) {
     return _db.collection('pairing_codes').doc(code).snapshots().map((doc) {
       if (!doc.exists) return false;
-      final data = doc.data()!;
-      return data['used'] == true && data['deviceId'] != null;
+      return doc.data()!['used'] == true;
     });
   }
 
@@ -71,18 +93,37 @@ class ChildService {
     }).toList();
   }
 
-  // ── Update app limit ───────────────────────────
+  // ── Set app limit ──────────────────────────────
   Future<void> setAppLimit({
     required String childId,
     required String packageName,
+    required String appName,
     required int limitMinutes,
+    bool allowTimeRequests = true,
   }) async {
     await _db
         .collection('children')
         .doc(childId)
-        .collection('app_limits')
+        .collection('appLimits')
         .doc(packageName)
-        .set({'limitMinutes': limitMinutes}, SetOptions(merge: true));
+        .set({
+      'packageName': packageName,
+      'appName': appName,
+      'dailyLimitMinutes': limitMinutes,
+      'isEnabled': true,
+      'allowTimeRequests': allowTimeRequests,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  // ── Watch app limits for a child (real-time) ───
+  Stream<List<Map<String, dynamic>>> watchAppLimits(String childId) {
+    return _db
+        .collection('children')
+        .doc(childId)
+        .collection('appLimits')
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => {...d.data(), 'id': d.id}).toList());
   }
 
   // ── Geo-fences ─────────────────────────────────

@@ -177,7 +177,7 @@ class _MapPreviewCard extends StatelessWidget {
       onTap: () async {
         final snap = await FirebaseFirestore.instance
             .collection('children')
-            .where('parentId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+            .where('parentUid', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
             .limit(1)
             .get();
         if (snap.docs.isNotEmpty && context.mounted) {
