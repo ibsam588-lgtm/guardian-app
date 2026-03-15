@@ -44,6 +44,14 @@ class AuthService {
         email: email,
         password: password,
       );
+      // Create parent doc if it doesn't exist yet (e.g. reviewer / test accounts)
+      final doc = await _db.collection('parents').doc(cred.user!.uid).get();
+      if (!doc.exists) {
+        await _createParentAccount(
+          cred.user!,
+          cred.user!.displayName ?? email.split('@').first,
+        );
+      }
       return AuthResult.success(cred.user!);
     } on FirebaseAuthException catch (e) {
       return AuthResult.error(_mapFirebaseError(e));
