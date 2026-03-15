@@ -600,6 +600,93 @@ class _RecentAlerts extends StatelessWidget {
 }
 
 
+// ── App-Lock PIN Sheet ──────────────────────────
+class _PinLockSheet extends StatefulWidget {
+  const _PinLockSheet();
+  @override
+  State<_PinLockSheet> createState() => _PinLockSheetState();
+}
+
+class _PinLockSheetState extends State<_PinLockSheet> {
+  final _pinController = TextEditingController();
+  String _message = 'Enter your PIN to lock the app';
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final pin = _pinController.text.trim();
+    if (pin.length < 4) {
+      setState(() => _message = 'PIN must be at least 4 digits');
+      return;
+    }
+    // TODO: persist / verify PIN via secure storage
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('App lock PIN saved')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24, right: 24, top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('App Lock',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'Nunito')),
+          const SizedBox(height: 8),
+          Text(_message,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontFamily: 'Nunito')),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pinController,
+            keyboardType: TextInputType.number,
+            obscureText: _obscure,
+            maxLength: 8,
+            decoration: InputDecoration(
+              hintText: '••••',
+              counterText: '',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              suffixIcon: IconButton(
+                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.blue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('Set PIN',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontFamily: 'Nunito')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Bottom Nav ─────────────────────────────────
 class GuardianBottomNav extends StatelessWidget {
   final int currentIndex;

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:go_router/go_router.dart';
-import 'package:fl_chart/fl_chart.dart';
+
 import '../../theme/app_theme.dart';
 import '../../screens/home/home_screen.dart';
 import '../activity/app_limits_screen.dart';
