@@ -4,7 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // Web client ID is required on Android to obtain idToken for Firebase Auth
+    serverClientId: '913378360413-4i98i0fdj98gn8r634hv27c9q2hmupk5.apps.googleusercontent.com',
+  );
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // ── Streams ──────────────────────────────────
