@@ -116,7 +116,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             width: 180, height: 180,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.red.withOpacity(
+                              color: AppColors.red.withValues(alpha: 
                                   0.05 + 0.05 * (1 - _pulse.value)),
                             ),
                           ),
@@ -127,7 +127,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             width: 160, height: 160,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.red.withOpacity(
+                              color: AppColors.red.withValues(alpha: 
                                   0.08 + 0.07 * (1 - _pulse.value)),
                             ),
                           ),
@@ -252,7 +252,7 @@ Widget _ContactCard(String initial, String name, String phone, String order,
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(20),
+            color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20),
           ),
           child: Text(order, style: TextStyle(
             color: color, fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Nunito',
@@ -427,7 +427,7 @@ class _ListenScreenState extends State<ListenScreen>
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: (_isListening ? AppColors.red : AppColors.purple)
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                                 width: 2,
                               ),
                             ),
@@ -441,7 +441,7 @@ class _ListenScreenState extends State<ListenScreen>
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: (_isListening ? AppColors.red : AppColors.purple)
-                                    .withOpacity(0.2),
+                                    .withValues(alpha: 0.2),
                                 width: 2,
                               ),
                             ),

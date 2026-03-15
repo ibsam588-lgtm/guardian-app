@@ -65,7 +65,7 @@ class _BannerTip extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.blueLight,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.blue.withOpacity(0.25)),
+        border: Border.all(color: AppColors.blue.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -102,7 +102,7 @@ class _AppLimitTile extends StatelessWidget {
   const _AppLimitTile({required this.app, required this.childId});
 
   Color get _color => _hexColor(app.color);
-  Color get _bg => _color.withOpacity(0.1);
+  Color get _bg => _color.withValues(alpha: 0.1);
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +118,7 @@ class _AppLimitTile extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isMaxed ? AppColors.red.withOpacity(0.4) : AppColors.border,
+            color: isMaxed ? AppColors.red.withValues(alpha: 0.4) : AppColors.border,
             width: isMaxed ? 1.5 : 1,
           ),
         ),
@@ -279,7 +279,7 @@ class _AppLimitEditSheetState extends State<_AppLimitEditSheet> {
   @override
   Widget build(BuildContext context) {
     final color = _hexColor(widget.app.color);
-    final bg = color.withOpacity(0.1);
+    final bg = color.withValues(alpha: 0.1);
 
     return Container(
       padding: EdgeInsets.only(
@@ -451,7 +451,7 @@ class _AppLimitEditSheetState extends State<_AppLimitEditSheet> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: _allowRequests
-                        ? AppColors.green.withOpacity(0.4)
+                        ? AppColors.green.withValues(alpha: 0.4)
                         : AppColors.border,
                   ),
                 ),
@@ -562,7 +562,7 @@ class _SliderRow extends StatelessWidget {
               activeTrackColor: color,
               thumbColor: color,
               inactiveTrackColor: AppColors.border,
-              overlayColor: color.withOpacity(0.15),
+              overlayColor: color.withValues(alpha: 0.15),
               trackHeight: 4,
             ),
             child: Slider(

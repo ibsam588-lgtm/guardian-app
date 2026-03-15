@@ -101,7 +101,7 @@ class _GuardianHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(40),
             ),
             child: Row(
@@ -208,14 +208,14 @@ class _MapPreviewCard extends StatelessWidget {
                   Container(
                     width: 80, height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.15),
+                      color: AppColors.blue.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                   ),
                   Container(
                     width: 50, height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.25),
+                      color: AppColors.blue.withValues(alpha: 0.25),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -237,7 +237,7 @@ class _MapPreviewCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
@@ -281,7 +281,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF4B5563).withOpacity(0.15)
+      ..color = const Color(0xFF4B5563).withValues(alpha: 0.15)
       ..strokeWidth = 0.5;
     const step = 40.0;
     for (double x = 0; x < size.width; x += step) {

@@ -137,12 +137,12 @@ class _PendingRequestCardState extends State<_PendingRequestCard> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: _isExpired ? AppColors.border : AppColors.amber.withOpacity(0.5),
+          color: _isExpired ? AppColors.border : AppColors.amber.withValues(alpha: 0.5),
           width: _isExpired ? 1 : 2,
         ),
         boxShadow: _isExpired ? [] : [
           BoxShadow(
-            color: AppColors.amber.withOpacity(0.15),
+            color: AppColors.amber.withValues(alpha: 0.15),
             blurRadius: 12, offset: const Offset(0, 4),
           )
         ],
@@ -159,7 +159,7 @@ class _PendingRequestCardState extends State<_PendingRequestCard> {
                 Container(
                   width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: _appColor.withOpacity(0.12),
+                    color: _appColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(child: Text(
@@ -230,7 +230,7 @@ class _PendingRequestCardState extends State<_PendingRequestCard> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFFBEB),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.amber.withOpacity(0.3)),
+                border: Border.all(color: AppColors.amber.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -442,7 +442,7 @@ class _HistoryRequestCard extends StatelessWidget {
           Container(
             width: 38, height: 38,
             decoration: BoxDecoration(
-              color: _appColor.withOpacity(0.1),
+              color: _appColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(child: Text(request.appName[0], style: TextStyle(
@@ -553,7 +553,7 @@ class _TimeRequestBannerState extends State<TimeRequestBanner>
           border: Border.all(color: AppColors.amber, width: 2),
           boxShadow: [
             BoxShadow(
-              color: AppColors.amber.withOpacity(0.2),
+              color: AppColors.amber.withValues(alpha: 0.2),
               blurRadius: 12, offset: const Offset(0, 4),
             ),
           ],
@@ -566,7 +566,7 @@ class _TimeRequestBannerState extends State<TimeRequestBanner>
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: _appColor.withOpacity(0.1),
+                    color: _appColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(child: Text(widget.request.appName[0], style: TextStyle(
@@ -760,14 +760,14 @@ class _ChildRequestTimeScreenState extends State<ChildRequestTimeScreen> {
           decoration: BoxDecoration(
             color: AppColors.redLight,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.red.withOpacity(0.3)),
+            border: Border.all(color: AppColors.red.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: _appColor.withOpacity(0.1),
+                  color: _appColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(child: Text(widget.appName[0], style: TextStyle(
@@ -947,7 +947,7 @@ class _WaitingDotsState extends State<_WaitingDots>
               width: 10, height: 10,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(val),
+                color: AppColors.blue.withValues(alpha: val),
                 shape: BoxShape.circle,
               ),
             );
