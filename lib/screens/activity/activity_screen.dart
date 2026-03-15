@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
-import '../home/home_screen.dart' show GuardianBottomNav;
+import '../../screens/home/home_screen.dart';
+import '../activity/app_limits_screen.dart';
 
 class ActivityScreen extends StatelessWidget {
   const ActivityScreen({super.key});
@@ -10,411 +14,329 @@ class ActivityScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Screen Time & Activity'),
-        backgroundColor: AppColors.navy,
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _WeeklyBarChart(),
-            _AppUsageCard(),
-            _TimeLimitsCard(),
-            _WebSitesCard(),
-            const SizedBox(height: 90),
-          ],
-        ),
+      body: Column(
+        children: [
+          _ActivityHeader(),
+          Expanded(
+            child: _ChildActivityBody(),
+          ),
+        ],
       ),
       bottomNavigationBar: const GuardianBottomNav(currentIndex: 2),
     );
   }
 }
 
-// ── Weekly bar chart using fl_chart ───────────
-class _WeeklyBarChart extends StatelessWidget {
-  final List<double> hours = const [3.2, 4.1, 3.8, 4.2, 0, 0, 0];
-  final List<String> days = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
+// ── Header ──────────────────────────────────────
+class _ActivityHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('4h 12m', style: TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.w800, fontFamily: 'Nunito',
-                    )),
-                    const Text('Total screen time today', style: TextStyle(
-                      fontSize: 12, color: AppColors.textMuted, fontFamily: 'Nunito',
-                    )),
-                  ],
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.amberLight,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text('+22% vs avg', style: TextStyle(
-                    color: AppColors.amber, fontSize: 11,
-                    fontWeight: FontWeight.w700, fontFamily: 'Nunito',
-                  )),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 120,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 6,
-                  barTouchData: BarTouchData(enabled: false),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (v, meta) => Text(
-                          days[v.toInt()],
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontFamily: 'Nunito',
-                            fontWeight: FontWeight.w600,
-                            color: v.toInt() == 3 ? AppColors.blue : AppColors.textMuted,
-                          ),
-                        ),
-                        reservedSize: 20,
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  gridData: const FlGridData(show: false),
-                  barGroups: List.generate(7, (i) => BarChartGroupData(
-                    x: i,
-                    barRods: [
-                      BarChartRodData(
-                        toY: hours[i],
-                        color: i == 3 ? AppColors.blue : const Color(0xFFCBD5E1),
-                        width: 28,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ],
-                  )),
-                ),
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      color: AppColors.navy,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 12,
+        left: 20, right: 20, bottom: 16,
       ),
-    );
-  }
-}
-
-// ── App usage list ─────────────────────────────
-class _AppUsageCard extends StatelessWidget {
-  final apps = const [
-    _AppData('TikTok', 120, 120, AppColors.red, AppColors.redLight),
-    _AppData('YouTube', 45, 90, AppColors.amber, AppColors.amberLight),
-    _AppData('Roblox', 30, 60, AppColors.purple, AppColors.purpleLight),
-    _AppData('WhatsApp', 22, 60, AppColors.green, AppColors.greenLight),
-    _AppData('Chrome', 15, 60, AppColors.blue, AppColors.blueLight),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Text('APP USAGE', style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted,
-                  fontFamily: 'Nunito', letterSpacing: 0.5,
-                )),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Set Limits', style: TextStyle(
-                    color: AppColors.blue, fontSize: 12,
-                    fontWeight: FontWeight.w700, fontFamily: 'Nunito',
-                  )),
-                ),
-              ],
-            ),
-            ...apps.map((a) => _AppUsageRow(app: a)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AppData {
-  final String name;
-  final int used, limit;
-  final Color color, bg;
-  const _AppData(this.name, this.used, this.limit, this.color, this.bg);
-
-  String get formattedTime {
-    if (used < 60) return '${used}m';
-    return '${used ~/ 60}h ${used % 60 > 0 ? '${used % 60}m' : ''}';
-  }
-
-  double get pct => used / limit;
-  bool get isMaxed => used >= limit;
-}
-
-class _AppUsageRow extends StatelessWidget {
-  final _AppData app;
-  const _AppUsageRow({required this.app});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: app.bg, borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(app.name[0], style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: app.color, fontFamily: 'Nunito',
-              )),
-            ),
+          const Expanded(
+            child: Text('Activity', style: TextStyle(
+              color: Colors.white, fontSize: 22,
+              fontWeight: FontWeight.w800, fontFamily: 'Nunito',
+            )),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+          Icon(Icons.phone_android_outlined, color: Colors.white.withValues(alpha: 0.7)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Main body — loads children then shows activity ──
+class _ChildActivityBody extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const Center(child: Text('Not signed in'));
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('children')
+          .where('parentUid', isEqualTo: uid)
+          .snapshots(),
+      builder: (ctx, snap) {
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final children = snap.data!.docs;
+        if (children.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.child_care, size: 64, color: AppColors.textMuted),
+                const SizedBox(height: 16),
+                const Text('No children added yet',
+                  style: TextStyle(fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text('Add a child from the Home screen to monitor activity',
+                  style: TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito'),
+                  textAlign: TextAlign.center),
+              ],
+            ),
+          );
+        }
+
+        // Use first child by default
+        final child = children.first;
+        final childId = child.id;
+        final childData = child.data() as Map<String, dynamic>;
+        final childName = childData['name'] as String? ?? 'Child';
+
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              _AppLimitsSummary(childId: childId, childName: childName),
+              _AppUsageCard(childId: childId, childName: childName),
+              const SizedBox(height: 90),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── App Limits Summary card ──────────────────────
+class _AppLimitsSummary extends StatelessWidget {
+  final String childId, childName;
+  const _AppLimitsSummary({required this.childId, required this.childName});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('children')
+          .doc(childId)
+          .collection('appLimits')
+          .snapshots(),
+      builder: (ctx, snap) {
+        final docs = snap.data?.docs ?? [];
+        final blockedCount = docs.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return (data['dailyLimitMinutes'] as int? ?? 60) == 0 && (data['isEnabled'] as bool? ?? true);
+        }).length;
+
+        return Card(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(app.name, style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 13,
+                    Text('$childName\'s App Limits', style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Nunito',
                     )),
-                    if (app.isMaxed) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.redLight,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text('Limit reached', style: TextStyle(
-                          color: AppColors.red, fontSize: 9,
-                          fontWeight: FontWeight.w700, fontFamily: 'Nunito',
-                        )),
-                      ),
-                    ],
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => AppLimitsScreen(childId: childId, childName: childName),
+                      )),
+                      child: const Text('Manage', style: TextStyle(
+                        color: AppColors.blue, fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'Nunito',
+                      )),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: app.pct.clamp(0.0, 1.0),
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    valueColor: AlwaysStoppedAnimation(app.color),
-                    minHeight: 5,
-                  ),
-                ),
+                const SizedBox(height: 8),
+                if (docs.isEmpty)
+                  const Text('No limits set — tap Manage to add app limits',
+                    style: TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 13))
+                else
+                  Text('${docs.length} apps monitored · $blockedCount blocked',
+                    style: const TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 13)),
+                if (docs.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ...docs.take(3).map((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    final name = d['appName'] as String? ?? doc.id;
+                    final limit = d['dailyLimitMinutes'] as int? ?? 60;
+                    final isBlocked = limit == 0 && (d['isEnabled'] as bool? ?? true);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: isBlocked ? AppColors.redLight : AppColors.blueLight,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: TextStyle(fontWeight: FontWeight.w800,
+                                color: isBlocked ? AppColors.red : AppColors.blue),
+                            )),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(name, style: const TextStyle(
+                            fontFamily: 'Nunito', fontWeight: FontWeight.w600, fontSize: 13))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isBlocked ? AppColors.redLight : AppColors.blueLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isBlocked ? 'Blocked' : '${limit}m/day',
+                              style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700,
+                                color: isBlocked ? AppColors.red : AppColors.blue),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (docs.length > 3)
+                    Text('+ ${docs.length - 3} more',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontFamily: 'Nunito')),
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Text(app.formattedTime, style: const TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700,
-            color: AppColors.textMuted, fontFamily: 'Nunito',
-          )),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-// ── Time limits toggles ────────────────────────
-class _TimeLimitsCard extends StatefulWidget {
-  @override
-  State<_TimeLimitsCard> createState() => _TimeLimitsCardState();
-}
-
-class _TimeLimitsCardState extends State<_TimeLimitsCard> {
-  bool _tiktokLimit = true;
-  bool _ytLimit = true;
-  bool _gamingLimit = true;
-  bool _bedtime = true;
+// ── App Usage from Firestore ────────────────────
+class _AppUsageCard extends StatelessWidget {
+  final String childId, childName;
+  const _AppUsageCard({required this.childId, required this.childName});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('DAILY TIME LIMITS', style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted,
-              fontFamily: 'Nunito', letterSpacing: 0.5,
-            )),
-            const SizedBox(height: 12),
-            _LimitRow(title: 'TikTok', sub: '2 hrs/day · Used: 2h (maxed)',
-                value: _tiktokLimit, onChanged: (v) => setState(() => _tiktokLimit = v)),
-            _LimitRow(title: 'YouTube', sub: '1.5 hrs/day · Used: 45m',
-                value: _ytLimit, onChanged: (v) => setState(() => _ytLimit = v)),
-            _LimitRow(title: 'Gaming (all apps)', sub: '1 hr/day · Used: 30m',
-                value: _gamingLimit, onChanged: (v) => setState(() => _gamingLimit = v)),
-            _LimitRow(title: 'Bedtime Lock', sub: 'All apps blocked 9:30 PM – 7:00 AM',
-                value: _bedtime, onChanged: (v) => setState(() => _bedtime = v), last: true),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('children')
+          .doc(childId)
+          .collection('app_usage')
+          .orderBy('minutesUsed', descending: true)
+          .limit(8)
+          .snapshots(),
+      builder: (ctx, snap) {
+        final docs = snap.data?.docs ?? [];
 
-class _LimitRow extends StatelessWidget {
-  final String title, sub;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final bool last;
-  const _LimitRow({
-    required this.title, required this.sub,
-    required this.value, required this.onChanged, this.last = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: last ? null : const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
+        return Card(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 14,
-                )),
-                Text(sub, style: const TextStyle(
-                  color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 12,
-                )),
+                Row(
+                  children: [
+                    const Text('APP USAGE', style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted,
+                      fontFamily: 'Nunito', letterSpacing: 0.5,
+                    )),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => AppLimitsScreen(childId: childId, childName: childName),
+                      )),
+                      child: const Text('Set Limits', style: TextStyle(
+                        color: AppColors.blue, fontSize: 12,
+                        fontWeight: FontWeight.w700, fontFamily: 'Nunito',
+                      )),
+                    ),
+                  ],
+                ),
+                if (!snap.hasData)
+                  const Center(child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ))
+                else if (docs.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'App usage data appears here once the child device\nhas the GuardIan Child app running.',
+                      style: TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 13),
+                    ),
+                  )
+                else
+                  ...docs.map((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    final name = d['appName'] as String? ?? doc.id;
+                    final used = d['minutesUsed'] as int? ?? 0;
+                    final limit = d['dailyLimitMinutes'] as int? ?? 60;
+                    final pct = limit > 0 ? (used / limit).clamp(0.0, 1.0) : 0.0;
+                    final isMaxed = limit > 0 && used >= limit;
+                    final color = isMaxed ? AppColors.red : AppColors.blue;
+                    final bg = isMaxed ? AppColors.redLight : AppColors.blueLight;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 36, height: 36,
+                                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+                                child: Center(child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color))),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(name, style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 14)),
+                                  Text(
+                                    limit > 0 ? '${_fmt(used)} of ${_fmt(limit)} used' : '${_fmt(used)} today',
+                                    style: const TextStyle(
+                                      color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 12)),
+                                ],
+                              )),
+                              if (isMaxed)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(color: AppColors.redLight, borderRadius: BorderRadius.circular(6)),
+                                  child: const Text('Limit reached', style: TextStyle(
+                                    color: AppColors.red, fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Nunito')),
+                                ),
+                            ],
+                          ),
+                          if (limit > 0) ...[
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: pct,
+                                backgroundColor: AppColors.border,
+                                valueColor: AlwaysStoppedAnimation(color),
+                                minHeight: 5,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: AppColors.blue,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
-}
 
-// ── Web sites ──────────────────────────────────
-class _WebSitesCard extends StatelessWidget {
-  final sites = const [
-    _SiteData('YouTube', 'Y', Color(0xFFEF4444), '47 visits', true),
-    _SiteData('Wikipedia', 'W', Color(0xFF1A56DB), '12 visits', true),
-    _SiteData('Roblox', 'R', Color(0xFF8B5CF6), '8 visits', true),
-    _SiteData('Discord', 'D', Color(0xFF5865F2), '5 visits', false),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('TOP SITES TODAY', style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted,
-                fontFamily: 'Nunito', letterSpacing: 0.5,
-              )),
-            ),
-            const SizedBox(height: 12),
-            ...sites.map((s) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(
-                      color: s.color, borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(child: Text(s.initial, style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w800,
-                      fontSize: 14, fontFamily: 'Nunito',
-                    ))),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s.name, style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 13,
-                        )),
-                        Text(s.visits, style: const TextStyle(
-                          color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 11,
-                        )),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: s.isSafe ? AppColors.greenLight : AppColors.amberLight,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(s.isSafe ? 'Safe' : 'Review',
-                        style: TextStyle(
-                          color: s.isSafe ? AppColors.green : AppColors.amber,
-                          fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Nunito',
-                        )),
-                  ),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
+  String _fmt(int mins) {
+    if (mins < 60) return '${mins}m';
+    return '${mins ~/ 60}h${mins % 60 > 0 ? ' ${mins % 60}m' : ''}';
   }
-}
-
-class _SiteData {
-  final String name, initial, visits;
-  final Color color;
-  final bool isSafe;
-  const _SiteData(this.name, this.initial, this.color, this.visits, this.isSafe);
 }

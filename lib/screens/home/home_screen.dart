@@ -506,14 +506,8 @@ class _QAButton extends StatelessWidget {
 class _RecentAlerts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final alerts = [
-      _AlertData('Left school geo-fence', 'Boundary breach · Unverified',
-          AppColors.red, AppColors.redLight, Icons.fence, '2m ago'),
-      _AlertData('TikTok 2hr limit reached', 'App blocked automatically',
-          AppColors.amber, AppColors.amberLight, Icons.timer_off_outlined, '1h ago'),
-      _AlertData('Arrived at school', '8:24 AM check-in confirmed',
-          AppColors.blue, AppColors.blueLight, Icons.location_on_outlined, '3h ago'),
-    ];
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const SizedBox.shrink();
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -522,213 +516,89 @@ class _RecentAlerts extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Text('Recent Alerts', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted, fontFamily: 'Nunito',
-                  letterSpacing: 0.5,
-                )),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.redLight,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text('1 new', style: TextStyle(
-                    color: AppColors.red, fontSize: 11,
-                    fontWeight: FontWeight.w700, fontFamily: 'Nunito',
-                  )),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...alerts.map((a) => _AlertItem(data: a)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AlertData {
-  final String title, subtitle, time;
-  final Color color, bg;
-  final IconData icon;
-  const _AlertData(this.title, this.subtitle, this.color, this.bg, this.icon, this.time);
-}
-
-class _AlertItem extends StatelessWidget {
-  final _AlertData data;
-  const _AlertItem({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: data.bg, borderRadius: BorderRadius.circular(10)),
-            child: Icon(data.icon, color: data.color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(data.title, style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontFamily: 'Nunito', fontSize: 13,
-                )),
-                Text(data.subtitle, style: const TextStyle(
-                  color: AppColors.textMuted, fontFamily: 'Nunito', fontSize: 11,
-                )),
-              ],
-            ),
-          ),
-          Text(data.time, style: const TextStyle(
-            color: AppColors.textMuted, fontSize: 11, fontFamily: 'Nunito',
-          )),
-        ],
-      ),
-    );
-  }
-}
-
-// ── PIN Lock Bottom Sheet ──────────────────────
-class _PinLockSheet extends StatefulWidget {
-  const _PinLockSheet();
-
-  @override
-  State<_PinLockSheet> createState() => _PinLockSheetState();
-}
-
-class _PinLockSheetState extends State<_PinLockSheet> {
-  String _pin = '';
-  String? _message;
-
-  void _onKey(String k) {
-    if (_pin.length >= 4) return;
-    setState(() => _pin += k);
-    if (_pin.length == 4) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (_pin == '1234') {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unlocked! Settings accessible.')),
-          );
-        } else {
-          setState(() { _pin = ''; _message = 'Wrong PIN. Try again.'; });
-        }
-      });
-    }
-  }
-
-  void _del() => setState(() { if (_pin.isNotEmpty) _pin = _pin.substring(0, _pin.length - 1); });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        left: 24, right: 24, top: 24,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          const Text('Parent Lock', style: TextStyle(
-            fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Nunito',
-          )),
-          const SizedBox(height: 6),
-          const Text('Enter your 4-digit PIN', style: TextStyle(
-            color: AppColors.textMuted, fontFamily: 'Nunito',
-          )),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(4, (i) => Container(
-              width: 16, height: 16,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: i < _pin.length ? AppColors.blue : AppColors.border,
-              ),
+            const Text('Recent Alerts', style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w700,
+              color: AppColors.textMuted, fontFamily: 'Nunito', letterSpacing: 0.5,
             )),
-          ),
-          if (_message != null) ...[
-            const SizedBox(height: 10),
-            Text(_message!, style: const TextStyle(color: AppColors.red, fontFamily: 'Nunito', fontSize: 13)),
-          ],
-          const SizedBox(height: 24),
-          ...[[1,2,3],[4,5,6],[7,8,9]].map((row) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: row.map((n) => _PinKey(
-                label: '$n',
-                onTap: () => _onKey('$n'),
-              )).toList(),
+            const SizedBox(height: 12),
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('alerts')
+                  .where('parentUid', isEqualTo: uid)
+                  .orderBy('timestamp', descending: true)
+                  .limit(5)
+                  .snapshots(),
+              builder: (ctx, snap) {
+                if (!snap.hasData) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                }
+                final docs = snap.data!.docs;
+                if (docs.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text('No alerts yet — all safe!',
+                      style: TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito')),
+                  );
+                }
+                return Column(
+                  children: docs.map((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    final type = d['type'] ?? 'location';
+                    final isWarning = type.contains('fence') || type.contains('limit');
+                    final color = isWarning ? AppColors.amber : AppColors.blue;
+                    final bg = isWarning ? AppColors.amberLight : AppColors.blueLight;
+                    final ts = (d['timestamp'] as Timestamp?)?.toDate();
+                    final timeAgo = ts != null ? _timeAgo(ts) : '';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+                            child: Icon(Icons.notifications_outlined, color: color, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(d['title'] ?? '', style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 13, fontFamily: 'Nunito',
+                                )),
+                                Text(d['subtitle'] ?? '', style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 11, fontFamily: 'Nunito',
+                                )),
+                              ],
+                            ),
+                          ),
+                          Text(timeAgo, style: const TextStyle(
+                            color: AppColors.textMuted, fontSize: 11, fontFamily: 'Nunito',
+                          )),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
-          )),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(width: 80 + 16),
-              _PinKey(label: '0', onTap: () => _onKey('0')),
-              const SizedBox(width: 16),
-              _PinKey(
-                label: '⌫',
-                onTap: _del,
-                isAction: true,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PinKey extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool isAction;
-  const _PinKey({required this.label, required this.onTap, this.isAction = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 80, height: 56,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: isAction ? Colors.transparent : AppColors.surfaceSecondary,
-          borderRadius: BorderRadius.circular(14),
-          border: isAction ? null : Border.all(color: AppColors.border),
-        ),
-        child: Center(
-          child: Text(label, style: TextStyle(
-            fontSize: isAction ? 18 : 22,
-            fontWeight: FontWeight.w700,
-            color: isAction ? AppColors.textMuted : AppColors.textPrimary,
-            fontFamily: 'Nunito',
-          )),
+          ],
         ),
       ),
     );
   }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
 }
+
 
 // ── Bottom Nav ─────────────────────────────────
 class GuardianBottomNav extends StatelessWidget {
