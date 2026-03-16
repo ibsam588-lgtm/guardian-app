@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
 import '../../theme/app_theme.dart';
@@ -17,12 +18,21 @@ class LocationScreen extends StatefulWidget {
 class _LocationScreenState extends State<LocationScreen> {
   StreamSubscription? _sub;
   ChildProfile? _child;
-  final List<_LocationPoint> _history = [];
+  GoogleMapController? _mapController;
   bool _loading = true;
+
+  static const _defaultCamera = CameraPosition(
+    target: LatLng(37.7749, -122.4194), // SF fallback
+    zoom: 13,
+  );
 
   @override
   void initState() {
     super.initState();
+    if (widget.childId.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
     _sub = FirebaseFirestore.instance
         .collection('children')
         .doc(widget.childId)
@@ -33,21 +43,13 @@ class _LocationScreenState extends State<LocationScreen> {
         setState(() {
           _child = child;
           _loading = false;
-          if (child.lastLat != null && child.lastLng != null) {
-            final pt = _LocationPoint(
-              lat: child.lastLat!,
-              lng: child.lastLng!,
-              address: child.lastLocation,
-              time: DateTime.now(),
-            );
-            if (_history.isEmpty ||
-                _history.first.lat != pt.lat ||
-                _history.first.lng != pt.lng) {
-              _history.insert(0, pt);
-              if (_history.length > 20) _history.removeLast();
-            }
-          }
         });
+        // Move map camera to new location
+        if (child.lastLat != null && child.lastLng != null) {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLng(LatLng(child.lastLat!, child.lastLng!)),
+          );
+        }
       }
     });
   }
@@ -55,6 +57,7 @@ class _LocationScreenState extends State<LocationScreen> {
   @override
   void dispose() {
     _sub?.cancel();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -74,6 +77,10 @@ class _LocationScreenState extends State<LocationScreen> {
         title: Text(_child != null ? "${_child!.name}'s Location" : 'Live Location'),
         backgroundColor: AppColors.navy,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         actions: [
           if (_child?.lastLat != null)
             IconButton(
@@ -85,73 +92,149 @@ class _LocationScreenState extends State<LocationScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _buildBody(),
+          : widget.childId.isEmpty
+              ? _NoChildView()
+              : _buildBody(),
       bottomNavigationBar: const GuardianBottomNav(currentIndex: 1),
     );
   }
 
   Widget _buildBody() {
+    if (_child == null) return const Center(child: CircularProgressIndicator());
     final child = _child!;
     final hasCoords = child.lastLat != null && child.lastLng != null;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+
+    return Column(children: [
+      // ── Google Map ──────────────────────────────────────────────────
+      SizedBox(
+        height: 300,
+        child: Stack(children: [
+          GoogleMap(
+            initialCameraPosition: hasCoords
+                ? CameraPosition(
+                    target: LatLng(child.lastLat!, child.lastLng!),
+                    zoom: 15)
+                : _defaultCamera,
+            onMapCreated: (c) => _mapController = c,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            markers: hasCoords ? {
+              Marker(
+                markerId: const MarkerId('child'),
+                position: LatLng(child.lastLat!, child.lastLng!),
+                infoWindow: InfoWindow(title: child.name, snippet: child.lastLocation),
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+              ),
+            } : {},
+          ),
+          if (!hasCoords)
+            Positioned.fill(child: Container(
+              color: Colors.black26,
+              child: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.location_off_rounded, color: Colors.white, size: 40),
+                SizedBox(height: 8),
+                Text('Waiting for GPS…', style: TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w700, fontSize: 14)),
+              ])),
+            )),
+          // Zoom controls (manual)
+          Positioned(right: 12, bottom: 12, child: Column(children: [
+            _MapBtn(Icons.add, () => _mapController?.animateCamera(CameraUpdate.zoomIn())),
+            const SizedBox(height: 4),
+            _MapBtn(Icons.remove, () => _mapController?.animateCamera(CameraUpdate.zoomOut())),
+          ])),
+          // Open maps button
+          if (hasCoords)
+            Positioned(left: 12, bottom: 12,
+              child: GestureDetector(
+                onTap: _openInMaps,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6)]),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.navy),
+                    SizedBox(width: 6),
+                    Text('Open Maps', style: TextStyle(fontSize: 12,
+                        fontWeight: FontWeight.w700, color: AppColors.navy, fontFamily: 'Nunito')),
+                  ]),
+                ),
+              )),
+        ]),
+      ),
+
+      // ── Info cards ──────────────────────────────────────────────────
+      Expanded(child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(children: [
           _StatusCard(child: child),
-          const SizedBox(height: 16),
           if (hasCoords) ...[
-            _MapCard(child: child, onOpenMaps: _openInMaps),
-            const SizedBox(height: 16),
-          ] else ...[
-            _NoLocationCard(child: child),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            _AddressCard(child: child, onOpenMaps: _openInMaps),
           ],
-          if (_history.isNotEmpty) ...[
-            const Text('Location History',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                    color: AppColors.navy, fontFamily: 'Nunito')),
-            const SizedBox(height: 10),
-            ..._history.map((pt) => _HistoryTile(point: pt)),
-          ],
-        ],
+          const SizedBox(height: 80),
+        ]),
+      )),
+    ]);
+  }
+}
+
+class _MapBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _MapBtn(this.icon, this.onTap);
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36, height: 36,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 4)]),
+        child: Icon(icon, size: 20, color: AppColors.navy),
       ),
     );
   }
 }
 
-// ─── Status Card ─────────────────────────────────────────────────────────────
+class _NoChildView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Padding(
+      padding: EdgeInsets.all(32),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.location_off_outlined, size: 64, color: AppColors.textMuted),
+        SizedBox(height: 16),
+        Text('No child device linked', style: TextStyle(
+            fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w700)),
+        SizedBox(height: 8),
+        Text('Add a child device from the Home screen first.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textMuted, fontFamily: 'Nunito')),
+      ]),
+    ));
+  }
+}
+
 class _StatusCard extends StatelessWidget {
   final ChildProfile child;
   const _StatusCard({required this.child});
-
-  String _timeAgo(DateTime t) {
-    final d = DateTime.now().difference(t);
-    if (d.inMinutes < 1) return 'just now';
-    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
-    if (d.inHours < 24) return '${d.inHours}h ago';
-    return '${d.inDays}d ago';
-  }
-
-  Color _batteryColor(double v) {
-    if (v > 0.5) return const Color(0xFF43D6A0);
-    if (v > 0.2) return Colors.orange;
-    return Colors.red;
-  }
-
   @override
   Widget build(BuildContext context) {
     final online = child.isOnline;
+    final battColor = child.batteryLevel > 0.5 ? AppColors.green
+        : child.batteryLevel > 0.2 ? AppColors.amber : AppColors.red;
+
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10)]),
       child: Row(children: [
         CircleAvatar(radius: 24,
-          backgroundColor: (online ? const Color(0xFF43D6A0) : Colors.grey).withValues(alpha: 0.15),
+          backgroundColor: (online ? AppColors.green : Colors.grey).withValues(alpha: 0.15),
           child: Icon(Icons.child_care_rounded, size: 26,
-              color: online ? const Color(0xFF43D6A0) : Colors.grey)),
+              color: online ? AppColors.green : Colors.grey)),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(child.name, style: const TextStyle(fontWeight: FontWeight.w700,
@@ -159,164 +242,60 @@ class _StatusCard extends StatelessWidget {
           Row(children: [
             Container(width: 7, height: 7,
                 decoration: BoxDecoration(shape: BoxShape.circle,
-                    color: online ? const Color(0xFF43D6A0) : Colors.grey)),
+                    color: online ? AppColors.green : Colors.grey)),
             const SizedBox(width: 5),
-            Text(online ? 'Online · ${_timeAgo(child.lastSeen)}' : 'Offline · ${_timeAgo(child.lastSeen)}',
+            Text(online ? 'Online' : 'Offline · last seen ${_ago(child.lastSeen)}',
                 style: TextStyle(fontSize: 12, fontFamily: 'Nunito',
-                    color: online ? const Color(0xFF43D6A0) : AppColors.textMuted)),
+                    color: online ? AppColors.green : AppColors.textMuted)),
           ]),
         ])),
         Column(children: [
-          Icon(Icons.battery_std_rounded, size: 18, color: _batteryColor(child.batteryLevel)),
+          Icon(Icons.battery_std_rounded, size: 18, color: battColor),
           Text('${(child.batteryLevel * 100).round()}%',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                  fontFamily: 'Nunito', color: _batteryColor(child.batteryLevel))),
+                  fontFamily: 'Nunito', color: battColor)),
         ]),
       ]),
     );
   }
+
+  String _ago(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 1) return 'just now';
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    return '${d.inDays}d ago';
+  }
 }
 
-// ─── Map Card ────────────────────────────────────────────────────────────────
-class _MapCard extends StatelessWidget {
+class _AddressCard extends StatelessWidget {
   final ChildProfile child;
   final VoidCallback onOpenMaps;
-  const _MapCard({required this.child, required this.onOpenMaps});
-
+  const _AddressCard({required this.child, required this.onOpenMaps});
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10)]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GestureDetector(
-          onTap: onOpenMaps,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Container(
-              height: 200, width: double.infinity,
-              color: const Color(0xFFE8EFE8),
-              child: Stack(alignment: Alignment.center, children: [
-                CustomPaint(size: const Size(double.infinity, 200), painter: _GridPainter()),
-                Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: AppColors.navy, shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.4), blurRadius: 12)]),
-                    child: const Icon(Icons.child_care_rounded, color: Colors.white, size: 22)),
-                  Container(width: 2, height: 10, color: AppColors.navy),
-                  Container(width: 8, height: 4,
-                      decoration: BoxDecoration(color: AppColors.navy.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(4))),
-                ]),
-                Positioned(bottom: 10, right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)]),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.open_in_new_rounded, size: 12, color: AppColors.navy),
-                      SizedBox(width: 4),
-                      Text('Open Maps', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                          color: AppColors.navy, fontFamily: 'Nunito')),
-                    ]),
-                  )),
-              ]),
-            ),
-          ),
-        ),
-        Padding(padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            const Icon(Icons.location_on_rounded, color: AppColors.amber, size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                child.lastLocation.isNotEmpty ? child.lastLocation
-                    : '${child.lastLat!.toStringAsFixed(5)}, ${child.lastLng!.toStringAsFixed(5)}',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Nunito'),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
-              Text('${child.lastLat!.toStringAsFixed(5)}, ${child.lastLng!.toStringAsFixed(5)}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontFamily: 'Nunito')),
-            ])),
-          ])),
-      ]),
-    );
-  }
-}
-
-// ─── No Location Card ────────────────────────────────────────────────────────
-class _NoLocationCard extends StatelessWidget {
-  final ChildProfile child;
-  const _NoLocationCard({required this.child});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10)]),
-      child: Column(children: [
-        Icon(Icons.location_off_rounded, size: 48, color: Colors.grey.withValues(alpha: 0.4)),
-        const SizedBox(height: 12),
-        const Text('Location unavailable',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, fontFamily: 'Nunito')),
-        const SizedBox(height: 6),
-        Text(child.isOnline ? 'Waiting for GPS signal…'
-            : '${child.name} is offline. Location updates when they come back online.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textMuted, fontFamily: 'Nunito')),
-      ]),
-    );
-  }
-}
-
-// ─── History Tile ────────────────────────────────────────────────────────────
-class _HistoryTile extends StatelessWidget {
-  final _LocationPoint point;
-  const _HistoryTile({required this.point});
-  @override
-  Widget build(BuildContext context) {
-    final d = DateTime.now().difference(point.time);
-    final t = d.inMinutes < 1 ? 'Just now'
-        : d.inMinutes < 60 ? '${d.inMinutes}m ago' : '${d.inHours}h ago';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6)]),
       child: Row(children: [
-        Container(width: 8, height: 8,
-            decoration: const BoxDecoration(color: AppColors.amber, shape: BoxShape.circle)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(point.address.isNotEmpty ? point.address
-              : '${point.lat.toStringAsFixed(4)}, ${point.lng.toStringAsFixed(4)}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, fontFamily: 'Nunito'),
-              overflow: TextOverflow.ellipsis)),
-        Text(t, style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontFamily: 'Nunito')),
+        Container(width: 40, height: 40,
+          decoration: BoxDecoration(color: AppColors.amberLight, borderRadius: BorderRadius.circular(10)),
+          child: const Icon(Icons.location_on_rounded, color: AppColors.amber, size: 22)),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            child.lastLocation.isNotEmpty ? child.lastLocation
+                : '${child.lastLat!.toStringAsFixed(5)}, ${child.lastLng!.toStringAsFixed(5)}',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Nunito'),
+            maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text('${child.lastLat!.toStringAsFixed(5)}, ${child.lastLng!.toStringAsFixed(5)}',
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontFamily: 'Nunito')),
+        ])),
+        IconButton(
+          icon: const Icon(Icons.open_in_new_rounded, color: AppColors.navy, size: 18),
+          onPressed: onOpenMaps),
       ]),
     );
   }
-}
-
-class _LocationPoint {
-  final double lat, lng;
-  final String address;
-  final DateTime time;
-  const _LocationPoint({required this.lat, required this.lng, required this.address, required this.time});
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = const Color(0xFFCCDDCC)..strokeWidth = 0.8;
-    for (double x = 0; x < size.width; x += 30) canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
-    for (double y = 0; y < size.height; y += 30) canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
-    final r = Paint()..color = Colors.white..strokeWidth = 7;
-    canvas.drawLine(Offset(0, size.height * 0.38), Offset(size.width, size.height * 0.48), r);
-    canvas.drawLine(Offset(size.width * 0.58, 0), Offset(size.width * 0.53, size.height), r);
-  }
-  @override bool shouldRepaint(_) => false;
 }
