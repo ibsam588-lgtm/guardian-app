@@ -133,7 +133,7 @@ jobs:
           packageName: com.corsairlabs.guardian
           releaseFiles: app-release.aab
           track: internal
-          status: draft
+          status: completed
 
   # ── Deploy Firebase Functions ────────────────
   deploy-functions:
